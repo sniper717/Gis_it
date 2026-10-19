@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>قسم مراقبة الأنظمة الجغرافية | GIS Control Center</title>
+    <style>
+        :root {
+            --bg-base: #0b0f19;
+            --bg-card: #131c2e;
+            --border-color: #1e293b;
+            --accent-green: #10b981;
+            --accent-cyan: #06b6d4;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            margin: 0;
+            padding: 15px;
+            direction: rtl;
+        }
+
+        .login-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 90vh;
+        }
+        .login-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 35px 30px;
+            border-radius: 12px;
+            width: 360px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #070a12;
+            border: 1px solid var(--border-color);
+            color: white;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent-green);
+            border: none;
+            color: #0b0f19;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .dashboard-container {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            gap: 20px;
+            max-width: 1550px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-container { grid-template-columns: 1fr; }
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .top-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 15px 20px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-badge {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .card h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: var(--accent-cyan);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 10px 12px;
+            text-align: right;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+        th { color: var(--text-muted); font-weight: 500; background: #070a12; }
+
+        .btn-action {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 11px;
+            margin-left: 3px;
+        }
+        .btn-done { background: var(--accent-green); color: #0b0f19; }
+        .btn-progress { background: var(--accent-orange); color: #0b0f19; }
+        .btn-delete { background: var(--accent-red); color: white; }
+        .btn-edit { background: var(--accent-cyan); color: #0b0f19; }
+        
+        .table-input {
+            background: #070a12;
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 6px;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+
+        input[type="datetime-local"] {
+            color-scheme: dark;
+            background: #070a12;
+            border: 1px solid var(--accent-cyan);
+            color: #38bdf8;
+            font-weight: bold;
+        }
+
+        .btn-logout { background: var(--accent-red); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-print { background: var(--accent-cyan); color: #0b0f19; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-export { background: var(--accent-orange); color: #0b0f19; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+
+        .kpi-panel {
+            background: #070a12;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .kpi-header {
+            font-size: 14px;
+            color: var(--accent-cyan);
+            font-weight: bold;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .circle-chart {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 10px auto;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-green) 0%, #1e293b 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .circle-inner {
+            width: 110px;
+            height: 110px;
+            background: #070a12;
+            border-radius: 50%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .circle-percentage { font-size: 26px; font-weight: bold; color: var(--text-main); }
+        .circle-label { font-size: 11px; color: var(--text-muted); }
+
+        .progress-bar-bg { background: #1e293b; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 5px; }
+        .progress-bar-fill { background: var(--accent-green); height: 100%; width: 0%; transition: width 0.4s ease; }
+        .kpi-stat-box { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .pro-widget { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; }
+        .pro-widget-title { font-size: 12px; color: var(--accent-cyan); font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .audit-item { font-size: 11px; color: var(--text-muted); padding: 5px 0; border-bottom: 1px dashed var(--border-color); display: flex; justify-content: space-between; }
+        .hidden { display: none !important; }
+
+        @media print {
+            body { background: white; color: black; padding: 0; }
+            .dashboard-container { display: block; }
+            .kpi-panel, .no-print, .top-bar { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loginScreen" class="login-wrapper no-print">
+        <div class="login-box">
+            <h2 style="color:var(--accent-cyan); margin-top:0; font-size: 20px;">قسم مراقبة الأنظمة الجغرافية</h2>
+            <p style="color:var(--text-muted); font-size:12px; margin-bottom: 20px;">الرجاء إدخال بيانات الاعتماد للتسجيل</p>
+            
+            <input type="text" id="username" placeholder="اسم المستخدم" onkeydown="checkEnter(event)">
+            <input type="password" id="password" placeholder="كلمة المرور" onkeydown="checkEnter(event)">
+            <button onclick="login()">دخول للنظام</button>
+            <p id="loginError" style="color:var(--accent-red); font-size:12px; display:none; margin-top:10px;">اسم المستخدم أو كلمة المرور غير صحيحة!</p>
+        </div>
+    </div>
+
+    <div id="mainDashboard" class="dashboard-container hidden">
+        <div class="main-content">
+            <div class="top-bar no-print">
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <span style="font-weight:bold; color:var(--accent-cyan); font-size: 16px;">🌍 قسم مراقبة الأنظمة الجغرافية</span>
+                    <span style="color:var(--text-muted); font-size:13px;">المستخدم الحالي: <span id="userDisplay" style="color:var(--text-main); font-weight:600;"></span></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <button id="exportMonthlyBtn" class="btn-export hidden" onclick="handleExportButton()">📥 <span id="exportBtnText">تصدير وتصفير الشهر</span></button>
+                    <button class="btn-print" onclick="window.print()">🖨️ طباعة التقرير اليومي</button>
+                    <span class="status-badge">🟢 SYSTEM ACTIVE</span>
+                    <button class="btn-logout" onclick="logout()">خروج</button>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                <div class="card" style="text-align:center;">
+                    <span style="color:var(--text-muted); font-size:13px;" id="statLabel1">إجمالي المهام</span>
+                    <h2 id="totalTasks" style="margin:5px 0 0 0; font-size:24px;">0</h2>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <span style="color:var(--text-muted); font-size:13px;" id="statLabel2">المهام المكتملة</span>
+                    <h2 id="completedTasks" style="margin:5px 0 0 0; font-size:24px; color:var(--accent-green);">0</h2>
+                </div>
+                <div class="card" style="text-align:center;">
+                    <span style="color:var(--text-muted); font-size:13px;" id="statLabel3">نسخ أشرطة النسخ الاحتياطي</span>
+                    <h2 id="tapeCount" style="margin:5px 0 0 0; font-size:24px; color:var(--accent-cyan);">0</h2>
+                </div>
+            </div>
+
+            <div id="adminUserManagementPanel" class="card hidden no-print" style="border: 1px solid var(--accent-cyan);">
+                <h3>👥 إدارة حسابات موظفي قسم مراقبة الأنظمة الجغرافية</h3>
+                <div style="background:#070a12; padding:12px; border-radius:8px; margin-bottom:15px;">
+                    <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--accent-cyan);">إضافة مستخدم جديد:</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 150px 110px; gap:10px;">
+                        <input type="text" id="newUsername" placeholder="اسم المستخدم" class="table-input">
+                        <input type="text" id="newName" placeholder="الاسم الظاهر" class="table-input">
+                        <input type="password" id="newPassword" placeholder="كلمة المرور" class="table-input">
+                        <select id="newRole" class="table-input">
+                            <option value="emp">⚙️ مشغل</option>
+                            <option value="subadmin">🔑 مدير فرعي</option>
+                        </select>
+                        <button class="btn-action btn-done" onclick="addUser()">إضافة الحساب</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>اسم المستخدم</th>
+                            <th>الاسم الظاهر</th>
+                            <th>كلمة المرور</th>
+                            <th>التصنيف</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>📼 سجل ومتابعة النسخ الاحتياطي الشهري على الأشرطة</h3>
+                <div id="adminTapePanel" class="hidden no-print" style="background:#070a12; padding:12px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--accent-cyan);">إسناد النسخ للموظف:</h4>
+                    <div style="display:grid; grid-template-columns: 2fr 1.5fr 1fr 1fr; gap:10px;">
+                        <input type="text" id="tapeSystem" placeholder="اسم النظام الجغرافي" class="table-input">
+                        <input type="text" id="tapeNumber" placeholder="رقم الشريط (Tape ID)" class="table-input">
+                        <select id="assignTapeTo" class="table-input"></select>
+                        <button class="btn-action btn-done" onclick="addTapeTask()">إسناد النسخ</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>النظام الجغرافي</th>
+                            <th>رقم الشريط</th>
+                            <th style="color:var(--accent-orange);">📅 التاريخ والوقت</th>
+                            <th>المسؤول</th>
+                            <th>المدير المسند</th>
+                            <th>تسليم إلى</th>
+                            <th>الحالة</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tapeTable"></tbody>
+                </table>
+            </div>
+
+            <div class="card">
+                <h3>📋 جدول المهام التشغيلية اليومية لمراقبة الأنظمة الجغرافية</h3>
+                <div id="adminTaskPanel" class="hidden no-print" style="background:#070a12; padding:12px; border-radius:8px; margin-bottom:15px; border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 10px 0; font-size:13px; color:var(--accent-cyan);">إسناد مهمة جديدة:</h4>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="taskTitle" placeholder="وصف المهمة اليومية..." class="table-input" style="flex:1;">
+                        <select id="assignTaskTo" class="table-input" style="width:220px;"></select>
+                        <button class="btn-action btn-done" style="padding:0 20px;" onclick="addDailyTask()">إسناد المهمة</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>المهمة</th>
+                            <th>المسؤول</th>
+                            <th>المدير المسند</th>
+                            <th>الحالة</th>
+                            <th>تاريخ التحديث</th>
+                            <th>الملاحظات</th>
+                            <th>الإجراء</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksTable"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="kpi-panel no-print">
+            <div class="kpi-header"><span id="kpiPanelTitle">مؤشر الإنجاز العام</span><span>🎯</span></div>
+            <div class="circle-chart" id="circleChart">
+                <div class="circle-inner">
+                    <span class="circle-percentage" id="kpiPercentage">0%</span>
+                    <span class="circle-label">نسبة الإنجاز</span>
+                </div>
+            </div>
+            <div class="progress-container">
+                <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
+                    <span>معدل إنجاز النسخ الاحتياطي:</span>
+                    <span id="tapeKpiText" style="color:var(--accent-cyan); font-weight:bold;">0%</span>
+                </div>
+                <div class="progress-bar-bg"><div class="progress-bar-fill" id="tapeProgressBar"></div></div>
+            </div>
+            <div class="kpi-stat-box">
+                <div>
+                    <div style="font-size:11px; color:var(--text-muted);">الملاحظات النشطة</div>
+                    <div style="font-size:18px; font-weight:bold; color:var(--accent-orange);" id="activeNotesCount">0</div>
+                </div>
+                <span>⚠️</span>
+            </div>
+            <div class="pro-widget">
+                <div class="pro-widget-title"><span>🛡️ الأمان وحماية المصدر</span><span style="color:var(--accent-green);">مفعل</span></div>
+                <div id="auditLogContainer">
+                    <div class="audit-item"><span>التشفير الداخلي</span><span style="color:var(--accent-cyan);">مستقر</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const encUser = ["s", "a", "i", "f", "a", "d", "m", "i", "n", "1"].join("");
+    const encPass = ["G", "i", "s", "a", "5", "3", "4", "9"].join("");
+
+    let defaultUsers = {};
+    defaultUsers[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
+    defaultUsers["saad"] = { pass: "12345", role: "emp", name: "سعد (مشغل)" };
+
+    let users = JSON.parse(localStorage.getItem('it_users')) || defaultUsers;
+
+    if (!users[encUser]) {
+        users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
+    } else {
+        users[encUser].role = "admin";
+        users[encUser].pass = encPass;
+    }
+
+    let tasks = JSON.parse(localStorage.getItem('it_tasks')) || [
+        { id: 1, title: "مراجعة خوادم الخرائط والأنظمة الجغرافية", assignedTo: "saad", assignedBy: encUser, status: "جاري العمل عليها", updateDate: "-", note: "بانتظار فحص الصيانة" }
+    ];
+
+    let tapeBackups = JSON.parse(localStorage.getItem('it_tapes')) || [
+        { id: 101, system: "قاعدة بيانات GIS الرئيسية", tapeId: "TAPE-2026-10A", dateTime: "2026-10-19 09:30 AM", operator: "saad", assignedBy: encUser, deliveredTo: "غرفة الأرشيف", status: "منجز ✅" }
+    ];
+
+    let auditLogs = JSON.parse(localStorage.getItem('it_audit')) || [{ text: "بدء تشغيل النظام بنجاح", time: "الآن" }];
+    let currentUser = null;
+
+    window.onload = function() {
+        const savedSession = sessionStorage.getItem('active_it_user');
+        if (savedSession && users[savedSession]) {
+            currentUser = users[savedSession];
+            currentUser.username = savedSession;
+            showDashboard();
+        }
+    };
+
+    function checkEnter(event) { if (event.key === 'Enter') login(); }
+
+    function saveAllToStorage() {
+        localStorage.setItem('it_users', JSON.stringify(users));
+        localStorage.setItem('it_tasks', JSON.stringify(tasks));
+        localStorage.setItem('it_tapes', JSON.stringify(tapeBackups));
+        localStorage.setItem('it_audit', JSON.stringify(auditLogs));
+    }
+
+    function getManagerDisplayName(uKey) {
+        if (!uKey) return 'سيف (مدير رئيسي)';
+        return users[uKey] ? users[uKey].name : uKey;
+    }
+
+    function addAuditLog(text) {
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        auditLogs.unshift({ text, time: timeStr });
+        if (auditLogs.length > 4) auditLogs.pop();
+        saveAllToStorage();
+        renderAuditLogs();
+    }
+
+    function renderAuditLogs() {
+        const container = document.getElementById('auditLogContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        auditLogs.forEach(log => {
+            container.innerHTML += `<div class="audit-item"><span>${log.text}</span><span style="color:var(--accent-cyan);">${log.time}</span></div>`;
+        });
+    }
+
+    function login() {
+        const u = document.getElementById('username').value.trim();
+        const p = document.getElementById('password').value.trim();
+
+        if (users[u] && users[u].pass === p) {
+            currentUser = users[u];
+            currentUser.username = u;
+            sessionStorage.setItem('active_it_user', u);
+            addAuditLog(`تسجيل دخول: ${users[u].name}`);
+            showDashboard();
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+        }
+    }
+
+    function logout() { sessionStorage.removeItem('active_it_user'); location.reload(); }
+    function isManager() { return currentUser && (currentUser.role === 'admin' || currentUser.role === 'subadmin'); }
+    function isSuperAdmin() { return currentUser && currentUser.username === encUser; }
+
+    function showDashboard() {
+        document.getElementById('loginScreen').classList.add('hidden');
+        document.getElementById('mainDashboard').classList.remove('hidden');
+
+        let roleText = currentUser.role === 'admin' ? 'مدير نظام رئيسي' : (currentUser.role === 'subadmin' ? 'مدير نظام فرعي' : 'مشغل');
+        document.getElementById('userDisplay').innerText = `${currentUser.name} (${roleText})`;
+
+        if (isManager()) {
+            document.getElementById('adminTapePanel').classList.remove('hidden');
+            document.getElementById('adminTaskPanel').classList.remove('hidden');
+            document.getElementById('adminUserManagementPanel').classList.remove('hidden');
+            document.getElementById('exportMonthlyBtn').classList.remove('hidden');
+            document.getElementById('kpiPanelTitle').innerText = "مؤشر إنجاز القسم الكلي";
+            document.getElementById('statLabel1').innerText = "إجمالي مهام القسم";
+        } else {
+            document.getElementById('adminTapePanel').classList.add('hidden');
+            document.getElementById('adminTaskPanel').classList.add('hidden');
+            document.getElementById('adminUserManagementPanel').classList.add('hidden');
+            document.getElementById('exportMonthlyBtn').classList.add('hidden');
+            document.getElementById('kpiPanelTitle').innerText = "مؤشر أدائك الشخصي";
+            document.getElementById('statLabel1').innerText = "المهام المسندة لك";
+        }
+        updateEmployeeDropdowns();
+        renderAll();
+    }
+
+    function renderAll() {
+        if (isManager()) renderUsersTable();
+        renderTasks();
+        renderTapeTable();
+        calculateKPIs();
+        renderAuditLogs();
+    }
+
+    function handleExportButton() {
+        if (!isManager()) return;
+        let csv = "\uFEFFنظام مراقبة الأنظمة الجغرافية - التقرير الشامل\n";
+        tapeBackups.forEach(tb => { csv += `"${tb.system}","${tb.tapeId}","${tb.status}"\n`; });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "GIS_Report.csv";
+        link.click();
+        if (isSuperAdmin() && confirm("هل تريد تصفير السجلات للبدء بشهر جديد؟")) {
+            tasks = []; tapeBackups = [];
+            saveAllToStorage(); renderAll();
+        }
+    }
+
+    function renderUsersTable() {
+        const tbody = document.getElementById('usersTable');
+        tbody.innerHTML = '';
+        for (let uKey in users) {
+            let u = users[uKey];
+            let roleBadge = u.role === 'admin' ? '⭐ مدير رئيسي' : (u.role === 'subadmin' ? '🔑 مدير فرعي' : '⚙️ مشغل');
+            
+            let actionButtons = '';
+            if (isSuperAdmin()) {
+                actionButtons += `<button class="btn-action btn-edit" onclick="editUser('${uKey}')">✏️ تعديل</button>`;
+                if (uKey !== encUser) {
+                    actionButtons += `<button class="btn-action btn-delete" onclick="deleteUser('${uKey}')">حذف</button>`;
+                } else {
+                    actionButtons += `<span style="color:var(--text-muted); font-size:11px;"> أساسي</span>`;
+                }
+            } else {
+                actionButtons = uKey === encUser ? '<span style="color:var(--text-muted);">محمي</span>' : `<span style="color:var(--text-muted); font-size:11px;">عرض فقط</span>`;
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td><b>${uKey}</b></td>
+                    <td>${u.name}</td>
+                    <td>••••••••</td>
+                    <td>${roleBadge}</td>
+                    <td>${actionButtons}</td>
+                </tr>
+            `;
+        }
+    }
+
+    function addUser() {
+        const uname = document.getElementById('newUsername').value.trim();
+        const name = document.getElementById('newName').value.trim();
+        const pass = document.getElementById('newPassword').value.trim();
+        const role = document.getElementById('newRole').value;
+        if (uname && name && pass) {
+            if (users[uname]) { alert('المستخدم موجود مسبقاً!'); return; }
+            users[uname] = { pass: pass, role: role, name: name };
+            saveAllToStorage();
+            document.getElementById('newUsername').value = '';
+            document.getElementById('newName').value = '';
+            document.getElementById('newPassword').value = '';
+            updateEmployeeDropdowns();
+            renderUsersTable();
+            alert('تمت إضافة المستخدم بنجاح.');
+        } else { alert('املأ البيانات'); }
+    }
+
+    // --- خاصية التعديل للمدير الرئيسي ---
+    function editUser(oldUsername) {
+        if (!isSuperAdmin()) {
+            alert('عذراً، صلاحية التعديل مقتصرة على مدير النظام الرئيسي فقط!');
+            return;
+        }
+
+        let userObj = users[oldUsername];
+        if (!userObj) return;
+
+        let newName = prompt(`تعديل الاسم الظاهر لـ (${oldUsername}):`, userObj.name);
+        if (newName === null) return;
+
+        let newUname = prompt(`تعديل اسم المستخدم (Username):`, oldUsername);
+        if (newUname === null) return;
+        newUname = newUname.trim();
+
+        let newPass = prompt(`تعديل كلمة المرور الجديدة:`, userObj.pass);
+        if (newPass === null) return;
+
+        if (!newUname || !newName || !newPass) {
+            alert('لا يمكن ترك الحقول فارغة!');
+            return;
+        }
+
+        if (newUname !== oldUsername) {
+            if (users[newUname]) {
+                alert('اسم المستخدم الجديد مستخدم بالفعل لشخص آخر!');
+                return;
+            }
+            users[newUname] = { pass: newPass, role: userObj.role, name: newName };
+            delete users[oldUsername];
+
+            tasks.forEach(t => { 
+                if (t.assignedTo === oldUsername) t.assignedTo = newUname; 
+                if (t.assignedBy === oldUsername) t.assignedBy = newUname;
+            });
+            tapeBackups.forEach(tb => { 
+                if (tb.operator === oldUsername) tb.operator = newUname; 
+                if (tb.assignedBy === oldUsername) tb.assignedBy = newUname;
+            });
+        } else {
+            userObj.name = newName;
+            userObj.pass = newPass;
+        }
+
+        addAuditLog(`تعديل حساب: ${newName}`);
+        saveAllToStorage();
+        updateEmployeeDropdowns();
+        renderUsersTable();
+        renderTasks();
+        renderTapeTable();
+        alert('تم تعديل بيانات المستخدم بنجاح! ✅');
+    }
+
+    function deleteUser(uname) {
+        if (!isSuperAdmin() || uname === encUser) return;
+        delete users[uname];
+        saveAllToStorage();
+        renderUsersTable();
+        updateEmployeeDropdowns();
+        alert('تم الحذف بنجاح');
+    }
+
+    function updateEmployeeDropdowns() {
+        const selects = [document.getElementById('assignTapeTo'), document.getElementById('assignTaskTo')];
+        selects.forEach(sel => {
+            if (!sel) return;
+            sel.innerHTML = '';
+            for (let uKey in users) {
+                if (users[uKey].role !== 'admin') {
+                    sel.innerHTML += `<option value="${uKey}">${users[uKey].name}</option>`;
+                }
+            }
+        });
+    }
+
+    function renderTapeTable() {
+        const tbody = document.getElementById('tapeTable');
+        tbody.innerHTML = '';
+        let count = 0;
+        tapeBackups.forEach(tb => {
+            if (isManager() || tb.operator === currentUser.username) {
+                count++;
+                let mgrMode = isManager();
+                tbody.innerHTML += `
+                    <tr>
+                        <td><b>${tb.system}</b></td>
+                        <td><span style="color:var(--accent-cyan); font-family:monospace;">${tb.tapeId}</span></td>
+                        <td>${mgrMode ? tb.dateTime : (tb.status.includes('منجز') ? tb.dateTime : `<input type="datetime-local" id="date_${tb.id}" class="table-input">`)}</td>
+                        <td>${users[tb.operator] ? users[tb.operator].name : tb.operator}</td>
+                        <td>${getManagerDisplayName(tb.assignedBy)}</td>
+                        <td>${mgrMode ? tb.deliveredTo : (tb.status.includes('منجز') ? tb.deliveredTo : `<input type="text" id="deliv_${tb.id}" class="table-input" value="${tb.deliveredTo}">`)}</td>
+                        <td><span style="color:${tb.status.includes('منجز')?'var(--accent-green)':'var(--accent-orange)'}">${tb.status}</span></td>
+                        <td>${!mgrMode && !tb.status.includes('منجز') ? `<button class="btn-action btn-done" onclick="completeTape(${tb.id})">إنجاز</button>` : 'متابعة'}</td>
+                    </tr>
+                `;
+            }
+        });
+        document.getElementById('tapeCount').innerText = count;
+    }
+
+    function renderTasks() {
+        const tbody = document.getElementById('tasksTable');
+        tbody.innerHTML = '';
+        let completed = 0, visibleCount = 0;
+        tasks.forEach(t => {
+            if (isManager() || t.assignedTo === currentUser.username) {
+                visibleCount++;
+                if (t.status === 'منجز') completed++;
+                let mgrMode = isManager();
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${t.title}</td>
+                        <td>${users[t.assignedTo] ? users[t.assignedTo].name : t.assignedTo}</td>
+                        <td>${getManagerDisplayName(t.assignedBy)}</td>
+                        <td><span style="color:${t.status==='منجز'?'var(--accent-green)':'var(--accent-orange)'}">${t.status}</span></td>
+                        <td><small>${t.updateDate || '-'}</small></td>
+                        <td>${mgrMode ? (t.note||'-') : `<input type="text" id="note_${t.id}" class="table-input" value="${t.note||''}"><button class="btn-action btn-progress" onclick="saveNote(${t.id})">حفظ</button>`}</td>
+                        <td>${!mgrMode ? `<button class="btn-action btn-done" onclick="updateTask(${t.id}, 'منجز')">منجز</button>` : 'متابعة'}</td>
+                    </tr>
+                `;
+            }
+        });
+        document.getElementById('totalTasks').innerText = visibleCount;
+        document.getElementById('completedTasks').innerText = completed;
+    }
+
+    function calculateKPIs() {
+        let myTasks = tasks.filter(t => isManager() || t.assignedTo === currentUser.username);
+        let taskPct = myTasks.length > 0 ? Math.round((myTasks.filter(t => t.status === 'منجز').length / myTasks.length) * 100) : 0;
+        document.getElementById('kpiPercentage').innerText = taskPct + '%';
+        document.getElementById('circleChart').style.background = `conic-gradient(var(--accent-green) ${taskPct}%, #1e293b ${taskPct}%)`;
+
+        let myTapes = tapeBackups.filter(tb => isManager() || tb.operator === currentUser.username);
+        let tapePct = myTapes.length > 0 ? Math.round((myTapes.filter(tb => tb.status.includes('منجز')).length / myTapes.length) * 100) : 0;
+        document.getElementById('tapeKpiText').innerText = tapePct + '%';
+        document.getElementById('tapeProgressBar').style.width = tapePct + '%';
+
+        let activeNotes = myTasks.filter(t => t.note && t.note.trim() !== '' && t.status !== 'منجز').length;
+        document.getElementById('activeNotesCount').innerText = activeNotes;
+    }
+
+    function completeTape(id) {
+        let tb = tapeBackups.find(x => x.id === id);
+        let dateInput = document.getElementById(`date_${id}`);
+        let delivInput = document.getElementById(`deliv_${id}`);
+        if (tb && dateInput && dateInput.value) {
+            tb.dateTime = dateInput.value;
+            tb.deliveredTo = delivInput ? delivInput.value.trim() : tb.deliveredTo;
+            tb.status = "منجز ✅";
+            saveAllToStorage();
+            renderAll();
+        } else { alert('الرجاء إدخال التاريخ والوقت'); }
+    }
+
+    function updateTask(id, status) {
+        let t = tasks.find(x => x.id === id);
+        if (t) {
+            t.status = status;
+            t.updateDate = new Date().toLocaleString();
+            saveAllToStorage();
+            renderAll();
+        }
+    }
+
+    function saveNote(id) {
+        let t = tasks.find(x => x.id === id);
+        let noteInput = document.getElementById(`note_${id}`);
+        if (t && noteInput) {
+            t.note = noteInput.value.trim();
+            saveAllToStorage();
+            alert('تم حفظ الملاحظة');
+            renderAll();
+        }
+    }
+
+    function addTapeTask() {
+        if (!isManager()) return;
+        let sys = document.getElementById('tapeSystem').value.trim();
+        let num = document.getElementById('tapeNumber').value.trim();
+        let op = document.getElementById('assignTapeTo').value;
+        if (sys && num) {
+            tapeBackups.push({ id: Date.now(), system: sys, tapeId: num, dateTime: "معلق", operator: op, assignedBy: currentUser.username, deliveredTo: "غرفة الأرشيف", status: "معلق ⏳" });
+            saveAllToStorage();
+            renderAll();
+            alert('تم إسناد الشريط بنجاح');
+        }
+    }
+
+    function addDailyTask() {
+        if (!isManager()) return;
+        let title = document.getElementById('taskTitle').value.trim();
+        let assignTo = document.getElementById('assignTaskTo').value;
+        if (title) {
+            tasks.push({ id: Date.now(), title: title, assignedTo: assignTo, assignedBy: currentUser.username, status: "جاري العمل عليها", updateDate: "-", note: "" });
+            saveAllToStorage();
+            renderAll();
+            alert('تم إسناد المهمة بنجاح');
+        }
+    }
+</script>
+</body>
+</html>
