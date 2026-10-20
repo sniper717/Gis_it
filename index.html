@@ -385,9 +385,8 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot, addDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    // 🔴 استبدل القيم أدناه بإعدادات Firebase الخاصة بك:
     const firebaseConfig = {
         apiKey: "YOUR_API_KEY",
         authDomain: "YOUR_AUTH_DOMAIN",
@@ -403,7 +402,6 @@
     const encUser = ["s", "a", "i", "f", "a", "d", "m", "i", "n", "1"].join("");
     const encPass = ["G", "i", "s", "a", "5", "3", "4", "9"].join("");
 
-    // تهيئة مسبقة فورية للمستخدمين لضمان عمل زر الدخول بدون أي تأخير
     window.users = {};
     window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
     window.users["saad"] = { pass: "12345", role: "emp", name: "سعد (مشغل)" };
@@ -413,7 +411,6 @@
     window.auditLogs = [{ text: "بدء تشغيل النظام الموحد بنجاح", time: "الآن" }];
     window.currentUser = null;
 
-    // دالة تسجيل الدخول المباشرة والمضمونة
     window.handleLogin = function() {
         const uInput = document.getElementById('username');
         const pInput = document.getElementById('password');
@@ -428,7 +425,7 @@
             window.currentUser = window.users[u];
             window.currentUser.username = u;
             localStorage.setItem('active_it_user', u);
-            addAuditLog(`تسجيل دخول: ${window.users[u].name}`);
+            window.addAuditLog(`تسجيل دخول: ${window.users[u].name}`);
             window.showDashboard();
         } else {
             if (errBox) errBox.style.display = 'block';
@@ -477,7 +474,6 @@
         window.renderAll();
     };
 
-    // فحص الجلسة المحفوظة عند فتح الصفحة مباشرة
     const savedSession = localStorage.getItem('active_it_user');
     if (savedSession && window.users[savedSession]) {
         window.currentUser = window.users[savedSession];
@@ -653,6 +649,81 @@
         });
     };
 
+    window.addTapeTask = async function() {
+        if (!window.isManager()) return;
+        const system = document.getElementById('tapeSystem').value.trim();
+        const tapeId = document.getElementById('tapeNumber').value.trim();
+        const operator = document.getElementById('assignTapeTo').value;
+
+        if (system && tapeId && operator) {
+            await addDoc(collection(db, "tapes"), {
+                system: system,
+                tapeId: tapeId,
+                operator: operator,
+                assignedBy: window.currentUser.username,
+                dateTime: '-',
+                deliveredTo: '-',
+                status: 'قيد الانتظار'
+            });
+            document.getElementById('tapeSystem').value = '';
+            document.getElementById('tapeNumber').value = '';
+            window.addAuditLog(`إسناد شريط نسخ: ${system}`);
+        } else {
+            alert('الرجاء إدخال اسم النظام ورقم الشريط.');
+        }
+    };
+
+    window.completeTape = async function(id) {
+        const dateInput = document.getElementById(`date_${id}`);
+        const delivInput = document.getElementById(`deliv_${id}`);
+        
+        if (!dateInput || !dateInput.value || !delivInput || !delivInput.value.trim()) {
+            alert('الرجاء إدخال تاريخ/وقت النسخ واسم الجهة أو الشخص المُسليم إليه الشريط.');
+            return;
+        }
+
+        await updateDoc(doc(db, "tapes", id), {
+            dateTime: dateInput.value,
+            deliveredTo: delivInput.value.trim(),
+            status: 'منجز 🟢'
+        });
+        window.addAuditLog(`إنجاز شريط نسخ احتياطي`);
+    };
+
+    window.addDailyTask = async function() {
+        if (!window.isManager()) return;
+        const title = document.getElementById('taskTitle').value.trim();
+        const assignedTo = document.getElementById('assignTaskTo').value;
+
+        if (title && assignedTo) {
+            await addDoc(collection(db, "tasks"), {
+                title: title,
+                assignedTo: assignedTo,
+                assignedBy: window.currentUser.username,
+                status: 'قيد التنفيذ',
+                updateDate: '-',
+                note: ''
+            });
+            document.getElementById('taskTitle').value = '';
+            window.addAuditLog(`إسناد مهمة جديدة`);
+        } else {
+            alert('الرجاء إدخال وصف المهمة.');
+        }
+    };
+
+    window.saveNote = async function(id) {
+        const noteInput = document.getElementById(`note_${id}`);
+        if (!noteInput) return;
+        
+        const now = new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        await updateDoc(doc(db, "tasks", id), {
+            note: noteInput.value.trim(),
+            status: 'منجز',
+            updateDate: now
+        });
+        window.addAuditLog(`تحديث وإنجاز مهمة`);
+    };
+
     window.renderTapeTable = function() {
         const tbody = document.getElementById('tapeTable');
         if (!tbody) return;
@@ -697,7 +768,7 @@
                         <td><span style="color:${t.status==='منجز'?'var(--accent-green)':'var(--accent-orange)'}">${t.status}</span></td>
                         <td><small>${t.updateDate || '-'}</small></td>
                         <td>${mgrMode ? (t.note||'-') : `<input type="text" id="note_${t.id}" class="table-input" value="${t.note||''}"><button class="btn-action btn-progress" onclick="window.saveNote('${t.id}')">حفظ</button>`}</td>
-                        <td>${!mgrMode ? `<button class="btn-action btn-done" onclick="window.updateTask('${t.id}', 'منجز')">منجز</button>` : 'متابعة'}</td>
+                        <td>${!mgrMode && t.status !== 'منجز' ? `<button class="btn-action btn-done" onclick="window.saveNote('${t.id}')">إنجاز</button>` : 'متابعة'}</td>
                     </tr>
                 `;
             }
@@ -707,78 +778,22 @@
     };
 
     window.calculateKPIs = function() {
-        let myTasks = window.tasks.filter(t => window.isManager() || t.assignedTo === window.currentUser.username);
-        let taskPct = myTasks.length > 0 ? Math.round((myTasks.filter(t => t.status === 'منجز').length / myTasks.length) * 100) : 0;
-        document.getElementById('kpiPercentage').innerText = taskPct + '%';
-        document.getElementById('circleChart').style.background = `conic-gradient(var(--accent-green) ${taskPct}%, #1e293b ${taskPct}%)`;
+        let totalTapes = window.tapeBackups.length;
+        let completedTapes = window.tapeBackups.filter(tb => tb.status.includes('منجز')).length;
+        let tapePercentage = totalTapes > 0 ? Math.round((completedTapes / totalTapes) * 100) : 0;
 
-        let myTapes = window.tapeBackups.filter(tb => window.isManager() || tb.operator === window.currentUser.username);
-        let tapePct = myTapes.length > 0 ? Math.round((myTapes.filter(tb => tb.status.includes('منجز')).length / myTapes.length) * 100) : 0;
-        document.getElementById('tapeKpiText').innerText = tapePct + '%';
-        document.getElementById('tapeProgressBar').style.width = tapePct + '%';
+        document.getElementById('tapeKpiText').innerText = tapePercentage + '%';
+        document.getElementById('tapeProgressBar').style.width = tapePercentage + '%';
 
-        let activeNotes = myTasks.filter(t => t.note && t.note.trim() !== '' && t.status !== 'منجز').length;
+        let totalT = window.tasks.length;
+        let compT = window.tasks.filter(t => t.status === 'منجز').length;
+        let overallPercent = totalT > 0 ? Math.round((compT / totalT) * 100) : 0;
+
+        document.getElementById('kpiPercentage').innerText = overallPercent + '%';
+        document.getElementById('circleChart').style.background = `conic-gradient(var(--accent-green) ${overallPercent}%, #1e293b 0%)`;
+
+        let activeNotes = window.tasks.filter(t => t.note && t.note.trim() !== '').length;
         document.getElementById('activeNotesCount').innerText = activeNotes;
-    };
-
-    window.completeTape = async function(id) {
-        let tb = window.tapeBackups.find(x => x.id == id);
-        let dateInput = document.getElementById(`date_${id}`);
-        let delivInput = document.getElementById(`deliv_${id}`);
-        if (tb && dateInput && dateInput.value) {
-            tb.dateTime = dateInput.value;
-            tb.deliveredTo = delivInput ? delivInput.value.trim() : tb.deliveredTo;
-            tb.status = "منجز ✅";
-            await setDoc(doc(db, "tapes", String(id)), tb);
-            alert('تم حفظ إنجاز الشريط بنجاح سحابياً');
-        } else { alert('الرجاء إدخال التاريخ والوقت'); }
-    };
-
-    window.updateTask = async function(id, status) {
-        let t = window.tasks.find(x => x.id == id);
-        if (t) {
-            t.status = status;
-            t.updateDate = new Date().toLocaleString();
-            await setDoc(doc(db, "tasks", String(id)), t);
-        }
-    };
-
-    window.saveNote = async function(id) {
-        let t = window.tasks.find(x => x.id == id);
-        let noteInput = document.getElementById(`note_${id}`);
-        if (t && noteInput) {
-            t.note = noteInput.value.trim();
-            await setDoc(doc(db, "tasks", String(id)), t);
-            alert('تم حفظ الملاحظة سحابياً');
-        }
-    };
-
-    window.addTapeTask = async function() {
-        if (!window.isManager()) return;
-        let sys = document.getElementById('tapeSystem').value.trim();
-        let num = document.getElementById('tapeNumber').value.trim();
-        let op = document.getElementById('assignTapeTo').value;
-        if (sys && num) {
-            let newId = Date.now();
-            let newTape = { id: newId, system: sys, tapeId: num, dateTime: "معلق", operator: op, assignedBy: window.currentUser.username, deliveredTo: "غرفة الأرشيف", status: "معلق ⏳" };
-            await setDoc(doc(db, "tapes", String(newId)), newTape);
-            document.getElementById('tapeSystem').value = '';
-            document.getElementById('tapeNumber').value = '';
-            alert('تم إسناد الشريط بنجاح وحفظه سحابياً');
-        }
-    };
-
-    window.addDailyTask = async function() {
-        if (!window.isManager()) return;
-        let title = document.getElementById('taskTitle').value.trim();
-        let assignTo = document.getElementById('assignTaskTo').value;
-        if (title) {
-            let newId = Date.now();
-            let newTask = { id: newId, title: title, assignedTo: assignTo, assignedBy: window.currentUser.username, status: "جاري العمل عليها", updateDate: "-", note: "" };
-            await setDoc(doc(db, "tasks", String(newId)), newTask);
-            document.getElementById('taskTitle').value = '';
-            alert('تم إسناد المهمة بنجاح وحفظها سحابياً');
-        }
     };
 </script>
 </body>
