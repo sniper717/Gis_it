@@ -408,8 +408,9 @@
     window.auditLogs = [{ text: "بدء تشغيل النظام الموحد بنجاح", time: "الآن" }];
     window.currentUser = null;
 
-    function initFirebaseSync() {
-        onSnapshot(collection(db, "users"), (snapshot) => {
+    async function initFirebaseSync() {
+        // التحقق التلقائي وإنشاء المدير الرئيسي إذا لم يكن موجوداً بالسحابة
+        onSnapshot(collection(db, "users"), async (snapshot) => {
             window.users = {};
             window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
             
@@ -418,8 +419,16 @@
                     window.users[docSnap.id] = docSnap.data();
                 });
             } else {
-                setDoc(doc(db, "users", encUser), window.users[encUser]);
-                setDoc(doc(db, "users", "saad"), { pass: "12345", role: "emp", name: "سعد (مشغل)" });
+                await setDoc(doc(db, "users", encUser), window.users[encUser]);
+                await setDoc(doc(db, "users", "saad"), { pass: "12345", role: "emp", name: "سعد (مشغل)" });
+            }
+
+            // فحص الجلسة بعد تحميل المستخدمين من السحابة لضمان عدم الخروج
+            const savedSession = localStorage.getItem('active_it_user');
+            if (savedSession && window.users[savedSession] && !window.currentUser) {
+                window.currentUser = window.users[savedSession];
+                window.currentUser.username = savedSession;
+                showDashboard();
             }
 
             if (window.currentUser) {
@@ -443,13 +452,6 @@
             });
             if (window.currentUser) { renderTapeTable(); calculateKPIs(); }
         });
-
-        const savedSession = localStorage.getItem('active_it_user');
-        if (savedSession && window.users[savedSession]) {
-            window.currentUser = window.users[savedSession];
-            window.currentUser.username = savedSession;
-            showDashboard();
-        }
     }
 
     initFirebaseSync();
