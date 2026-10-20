@@ -400,35 +400,36 @@
     const encUser = ["s", "a", "i", "f", "a", "d", "m", "i", "n", "1"].join("");
     const encPass = ["G", "i", "s", "a", "5", "3", "4", "9"].join("");
 
+    // تهيئة البيانات الافتراضية محلياً فوراً ليعمل زر الدخول بدون أي تأخير
     window.users = {};
     window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
+    window.users["saad"] = { pass: "12345", role: "emp", name: "سعد (مشغل)" };
 
     window.tasks = [];
     window.tapeBackups = [];
     window.auditLogs = [{ text: "بدء تشغيل النظام الموحد بنجاح", time: "الآن" }];
     window.currentUser = null;
 
-    async function initFirebaseSync() {
-        // التحقق التلقائي وإنشاء المدير الرئيسي إذا لم يكن موجوداً بالسحابة
-        onSnapshot(collection(db, "users"), async (snapshot) => {
-            window.users = {};
-            window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
-            
+    // فحص الجلسة المخزنة فوراً عند فتح الصفحة
+    const savedSession = localStorage.getItem('active_it_user');
+    if (savedSession && window.users[savedSession]) {
+        window.currentUser = window.users[savedSession];
+        window.currentUser.username = savedSession;
+        window.addEventListener('DOMContentLoaded', () => {
+            showDashboard();
+        });
+    }
+
+    function initFirebaseSync() {
+        // مزامنة المستخدمين من السحابة وتحديث القائمة
+        onSnapshot(collection(db, "users"), (snapshot) => {
             if (!snapshot.empty) {
                 snapshot.forEach(docSnap => {
                     window.users[docSnap.id] = docSnap.data();
                 });
             } else {
-                await setDoc(doc(db, "users", encUser), window.users[encUser]);
-                await setDoc(doc(db, "users", "saad"), { pass: "12345", role: "emp", name: "سعد (مشغل)" });
-            }
-
-            // فحص الجلسة بعد تحميل المستخدمين من السحابة لضمان عدم الخروج
-            const savedSession = localStorage.getItem('active_it_user');
-            if (savedSession && window.users[savedSession] && !window.currentUser) {
-                window.currentUser = window.users[savedSession];
-                window.currentUser.username = savedSession;
-                showDashboard();
+                setDoc(doc(db, "users", encUser), window.users[encUser]);
+                setDoc(doc(db, "users", "saad"), window.users["saad"]);
             }
 
             if (window.currentUser) {
@@ -437,6 +438,7 @@
             }
         });
 
+        // مزامنة المهام
         onSnapshot(collection(db, "tasks"), (snapshot) => {
             window.tasks = [];
             snapshot.forEach(docSnap => {
@@ -445,6 +447,7 @@
             if (window.currentUser) { renderTasks(); calculateKPIs(); }
         });
 
+        // مزامنة الأشرطة
         onSnapshot(collection(db, "tapes"), (snapshot) => {
             window.tapeBackups = [];
             snapshot.forEach(docSnap => {
@@ -478,11 +481,14 @@
     window.isSuperAdmin = function() { return window.currentUser && window.currentUser.username === encUser; }
 
     window.showDashboard = function() {
-        document.getElementById('loginScreen').classList.add('hidden');
-        document.getElementById('mainDashboard').classList.remove('hidden');
+        const loginScreen = document.getElementById('loginScreen');
+        const mainDashboard = document.getElementById('mainDashboard');
+        if (loginScreen) loginScreen.classList.add('hidden');
+        if (mainDashboard) mainDashboard.classList.remove('hidden');
 
         let roleText = window.currentUser.role === 'admin' ? 'مدير نظام رئيسي' : (window.currentUser.role === 'subadmin' ? 'مدير نظام فرعي' : 'مشغل');
-        document.getElementById('userDisplay').innerText = `${window.currentUser.name} (${roleText})`;
+        const userDisplay = document.getElementById('userDisplay');
+        if (userDisplay) userDisplay.innerText = `${window.currentUser.name} (${roleText})`;
 
         if (isManager()) {
             document.getElementById('adminTapePanel').classList.remove('hidden');
