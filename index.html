@@ -409,17 +409,15 @@
     window.currentUser = null;
 
     function initFirebaseSync() {
-        // 1. مزامنة المستخدمين لحظياً من سحابة Firebase
         onSnapshot(collection(db, "users"), (snapshot) => {
             window.users = {};
-            window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" }; // ضمان بقاء المدير الرئيسي دائماً
+            window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
             
             if (!snapshot.empty) {
                 snapshot.forEach(docSnap => {
                     window.users[docSnap.id] = docSnap.data();
                 });
             } else {
-                // رفع البيانات الافتراضية لأول مرة إذا كانت القاعدة فارغة تماماً
                 setDoc(doc(db, "users", encUser), window.users[encUser]);
                 setDoc(doc(db, "users", "saad"), { pass: "12345", role: "emp", name: "سعد (مشغل)" });
             }
@@ -430,7 +428,6 @@
             }
         });
 
-        // 2. مزامنة المهام
         onSnapshot(collection(db, "tasks"), (snapshot) => {
             window.tasks = [];
             snapshot.forEach(docSnap => {
@@ -439,7 +436,6 @@
             if (window.currentUser) { renderTasks(); calculateKPIs(); }
         });
 
-        // 3. مزامنة الأشرطة
         onSnapshot(collection(db, "tapes"), (snapshot) => {
             window.tapeBackups = [];
             snapshot.forEach(docSnap => {
@@ -448,7 +444,6 @@
             if (window.currentUser) { renderTapeTable(); calculateKPIs(); }
         });
 
-        // التحقق من الجلسة عبر localStorage لضمان عدم الخروج عند التحديث
         const savedSession = localStorage.getItem('active_it_user');
         if (savedSession && window.users[savedSession]) {
             window.currentUser = window.users[savedSession];
@@ -468,7 +463,7 @@
         if (window.users[u] && window.users[u].pass === p) {
             window.currentUser = window.users[u];
             window.currentUser.username = u;
-            localStorage.setItem('active_it_user', u); // استخدام localStorage للحفاظ على الجلسة
+            localStorage.setItem('active_it_user', u);
             addAuditLog(`تسجيل دخول: ${window.users[u].name}`);
             showDashboard();
         } else {
@@ -608,9 +603,19 @@
     }
 
     window.deleteUser = async function(uname) {
-        if (!isSuperAdmin() || uname === encUser) return;
-        await deleteDoc(doc(db, "users", uname));
-        alert('تم الحذف بنجاح');
+        if (!isSuperAdmin()) { alert('مقتصرة على مدير النظام الرئيسي فقط!'); return; }
+        if (uname === encUser) { alert('لا يمكن حذف حساب المدير الرئيسي الأساسي!'); return; }
+        
+        if (confirm(`هل أنت متأكد من حذف المستخدم (${uname})؟`)) {
+            try {
+                await deleteDoc(doc(db, "users", uname));
+                addAuditLog(`تم حذف المستخدم: ${uname}`);
+                alert('تم الحذف بنجاح من السحابة ✅');
+            } catch (error) {
+                console.error("خطأ أثناء الحذف: ", error);
+                alert('حدث خطأ أثناء محاولة الحذف.');
+            }
+        }
     }
 
     window.updateEmployeeDropdowns = function() {
