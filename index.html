@@ -62,6 +62,9 @@
             cursor: pointer;
             margin-top: 10px;
         }
+        .login-box button:hover {
+            opacity: 0.9;
+        }
 
         .dashboard-container {
             display: grid;
@@ -228,9 +231,9 @@
             <h2 style="color:var(--accent-cyan); margin-top:0; font-size: 20px;">قسم مراقبة الأنظمة الجغرافية</h2>
             <p style="color:var(--text-muted); font-size:12px; margin-bottom: 20px;">الرجاء إدخال بيانات الاعتماد للتسجيل</p>
             
-            <input type="text" id="username" placeholder="اسم المستخدم" onkeydown="checkEnter(event)">
-            <input type="password" id="password" placeholder="كلمة المرور" onkeydown="checkEnter(event)">
-            <button onclick="login()">دخول للنظام</button>
+            <input type="text" id="username" placeholder="اسم المستخدم" onkeydown="if(event.key==='Enter') window.handleLogin()">
+            <input type="password" id="password" placeholder="كلمة المرور" onkeydown="if(event.key==='Enter') window.handleLogin()">
+            <button type="button" onclick="window.handleLogin()">دخول للنظام</button>
             <p id="loginError" style="color:var(--accent-red); font-size:12px; display:none; margin-top:10px;">اسم المستخدم أو كلمة المرور غير صحيحة!</p>
         </div>
     </div>
@@ -243,10 +246,10 @@
                     <span style="color:var(--text-muted); font-size:13px;">المستخدم الحالي: <span id="userDisplay" style="color:var(--text-main); font-weight:600;"></span></span>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <button id="exportMonthlyBtn" class="btn-export hidden" onclick="handleExportButton()">📥 <span id="exportBtnText">تصدير وتصفير الشهر</span></button>
+                    <button id="exportMonthlyBtn" class="btn-export hidden" onclick="window.handleExportButton()">📥 <span id="exportBtnText">تصدير وتصفير الشهر</span></button>
                     <button class="btn-print" onclick="window.print()">🖨️ طباعة التقرير اليومي</button>
                     <span class="status-badge">🟢 CLOUD SYNCED</span>
-                    <button class="btn-logout" onclick="logout()">خروج</button>
+                    <button class="btn-logout" onclick="window.logout()">خروج</button>
                 </div>
             </div>
 
@@ -277,7 +280,7 @@
                             <option value="emp">⚙️ مشغل</option>
                             <option value="subadmin">🔑 مدير فرعي</option>
                         </select>
-                        <button class="btn-action btn-done" onclick="addUser()">إضافة الحساب</button>
+                        <button class="btn-action btn-done" onclick="window.addUser()">إضافة الحساب</button>
                     </div>
                 </div>
                 <table>
@@ -302,7 +305,7 @@
                         <input type="text" id="tapeSystem" placeholder="اسم النظام الجغرافي" class="table-input">
                         <input type="text" id="tapeNumber" placeholder="رقم الشريط (Tape ID)" class="table-input">
                         <select id="assignTapeTo" class="table-input"></select>
-                        <button class="btn-action btn-done" onclick="addTapeTask()">إسناد النسخ</button>
+                        <button class="btn-action btn-done" onclick="window.addTapeTask()">إسناد النسخ</button>
                     </div>
                 </div>
                 <table>
@@ -329,7 +332,7 @@
                     <div style="display:flex; gap:10px;">
                         <input type="text" id="taskTitle" placeholder="وصف المهمة اليومية..." class="table-input" style="flex:1;">
                         <select id="assignTaskTo" class="table-input" style="width:220px;"></select>
-                        <button class="btn-action btn-done" style="padding:0 20px;" onclick="addDailyTask()">إسناد المهمة</button>
+                        <button class="btn-action btn-done" style="padding:0 20px;" onclick="window.addDailyTask()">إسناد المهمة</button>
                     </div>
                 </div>
                 <table>
@@ -400,7 +403,7 @@
     const encUser = ["s", "a", "i", "f", "a", "d", "m", "i", "n", "1"].join("");
     const encPass = ["G", "i", "s", "a", "5", "3", "4", "9"].join("");
 
-    // تهيئة البيانات الافتراضية محلياً فوراً ليعمل زر الدخول بدون أي تأخير
+    // تهيئة مسبقة فورية للمستخدمين لضمان عمل زر الدخول بدون أي تأخير
     window.users = {};
     window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
     window.users["saad"] = { pass: "12345", role: "emp", name: "سعد (مشغل)" };
@@ -410,75 +413,40 @@
     window.auditLogs = [{ text: "بدء تشغيل النظام الموحد بنجاح", time: "الآن" }];
     window.currentUser = null;
 
-    // فحص الجلسة المخزنة فوراً عند فتح الصفحة
-    const savedSession = localStorage.getItem('active_it_user');
-    if (savedSession && window.users[savedSession]) {
-        window.currentUser = window.users[savedSession];
-        window.currentUser.username = savedSession;
-        window.addEventListener('DOMContentLoaded', () => {
-            showDashboard();
-        });
-    }
+    // دالة تسجيل الدخول المباشرة والمضمونة
+    window.handleLogin = function() {
+        const uInput = document.getElementById('username');
+        const pInput = document.getElementById('password');
+        const errBox = document.getElementById('loginError');
 
-    function initFirebaseSync() {
-        // مزامنة المستخدمين من السحابة وتحديث القائمة
-        onSnapshot(collection(db, "users"), (snapshot) => {
-            if (!snapshot.empty) {
-                snapshot.forEach(docSnap => {
-                    window.users[docSnap.id] = docSnap.data();
-                });
-            } else {
-                setDoc(doc(db, "users", encUser), window.users[encUser]);
-                setDoc(doc(db, "users", "saad"), window.users["saad"]);
-            }
+        if (!uInput || !pInput) return;
 
-            if (window.currentUser) {
-                updateEmployeeDropdowns();
-                if (isManager()) renderUsersTable();
-            }
-        });
-
-        // مزامنة المهام
-        onSnapshot(collection(db, "tasks"), (snapshot) => {
-            window.tasks = [];
-            snapshot.forEach(docSnap => {
-                window.tasks.push({ id: docSnap.id, ...docSnap.data() });
-            });
-            if (window.currentUser) { renderTasks(); calculateKPIs(); }
-        });
-
-        // مزامنة الأشرطة
-        onSnapshot(collection(db, "tapes"), (snapshot) => {
-            window.tapeBackups = [];
-            snapshot.forEach(docSnap => {
-                window.tapeBackups.push({ id: docSnap.id, ...docSnap.data() });
-            });
-            if (window.currentUser) { renderTapeTable(); calculateKPIs(); }
-        });
-    }
-
-    initFirebaseSync();
-
-    window.checkEnter = function(event) { if (event.key === 'Enter') login(); }
-
-    window.login = function() {
-        const u = document.getElementById('username').value.trim();
-        const p = document.getElementById('password').value.trim();
+        const u = uInput.value.trim();
+        const p = pInput.value.trim();
 
         if (window.users[u] && window.users[u].pass === p) {
             window.currentUser = window.users[u];
             window.currentUser.username = u;
             localStorage.setItem('active_it_user', u);
             addAuditLog(`تسجيل دخول: ${window.users[u].name}`);
-            showDashboard();
+            window.showDashboard();
         } else {
-            document.getElementById('loginError').style.display = 'block';
+            if (errBox) errBox.style.display = 'block';
         }
-    }
+    };
 
-    window.logout = function() { localStorage.removeItem('active_it_user'); location.reload(); }
-    window.isManager = function() { return window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'subadmin'); }
-    window.isSuperAdmin = function() { return window.currentUser && window.currentUser.username === encUser; }
+    window.logout = function() {
+        localStorage.removeItem('active_it_user');
+        location.reload();
+    };
+
+    window.isManager = function() {
+        return window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'subadmin');
+    };
+
+    window.isSuperAdmin = function() {
+        return window.currentUser && window.currentUser.username === encUser;
+    };
 
     window.showDashboard = function() {
         const loginScreen = document.getElementById('loginScreen');
@@ -505,24 +473,70 @@
             document.getElementById('kpiPanelTitle').innerText = "مؤشر أدائك الشخصي";
             document.getElementById('statLabel1').innerText = "المهام المسندة لك";
         }
-        updateEmployeeDropdowns();
-        renderAll();
+        window.updateEmployeeDropdowns();
+        window.renderAll();
+    };
+
+    // فحص الجلسة المحفوظة عند فتح الصفحة مباشرة
+    const savedSession = localStorage.getItem('active_it_user');
+    if (savedSession && window.users[savedSession]) {
+        window.currentUser = window.users[savedSession];
+        window.currentUser.username = savedSession;
+        window.addEventListener('DOMContentLoaded', () => {
+            window.showDashboard();
+        });
     }
 
-    window.renderAll = function() {
-        if (isManager()) renderUsersTable();
-        renderTasks();
-        renderTapeTable();
-        calculateKPIs();
-        renderAuditLogs();
+    function initFirebaseSync() {
+        onSnapshot(collection(db, "users"), (snapshot) => {
+            if (!snapshot.empty) {
+                snapshot.forEach(docSnap => {
+                    window.users[docSnap.id] = docSnap.data();
+                });
+            } else {
+                setDoc(doc(db, "users", encUser), window.users[encUser]);
+                setDoc(doc(db, "users", "saad"), window.users["saad"]);
+            }
+
+            if (window.currentUser) {
+                window.updateEmployeeDropdowns();
+                if (window.isManager()) window.renderUsersTable();
+            }
+        });
+
+        onSnapshot(collection(db, "tasks"), (snapshot) => {
+            window.tasks = [];
+            snapshot.forEach(docSnap => {
+                window.tasks.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            if (window.currentUser) { window.renderTasks(); window.calculateKPIs(); }
+        });
+
+        onSnapshot(collection(db, "tapes"), (snapshot) => {
+            window.tapeBackups = [];
+            snapshot.forEach(docSnap => {
+                window.tapeBackups.push({ id: docSnap.id, ...docSnap.data() });
+            });
+            if (window.currentUser) { window.renderTapeTable(); window.calculateKPIs(); }
+        });
     }
+
+    initFirebaseSync();
+
+    window.renderAll = function() {
+        if (window.isManager()) window.renderUsersTable();
+        window.renderTasks();
+        window.renderTapeTable();
+        window.calculateKPIs();
+        window.renderAuditLogs();
+    };
 
     window.addAuditLog = function(text) {
         const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         window.auditLogs.unshift({ text, time: timeStr });
         if (window.auditLogs.length > 4) window.auditLogs.pop();
-        renderAuditLogs();
-    }
+        window.renderAuditLogs();
+    };
 
     window.renderAuditLogs = function() {
         const container = document.getElementById('auditLogContainer');
@@ -531,10 +545,10 @@
         window.auditLogs.forEach(log => {
             container.innerHTML += `<div class="audit-item"><span>${log.text}</span><span style="color:var(--accent-cyan);">${log.time}</span></div>`;
         });
-    }
+    };
 
     window.handleExportButton = function() {
-        if (!isManager()) return;
+        if (!window.isManager()) return;
         let csv = "\uFEFFنظام مراقبة الأنظمة الجغرافية - التقرير الشامل\n";
         window.tapeBackups.forEach(tb => { csv += `"${tb.system}","${tb.tapeId}","${tb.status}"\n`; });
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -542,7 +556,7 @@
         link.href = URL.createObjectURL(blob);
         link.download = "GIS_Report.csv";
         link.click();
-    }
+    };
 
     window.renderUsersTable = function() {
         const tbody = document.getElementById('usersTable');
@@ -553,10 +567,10 @@
             let roleBadge = u.role === 'admin' ? '⭐ مدير رئيسي' : (u.role === 'subadmin' ? '🔑 مدير فرعي' : '⚙️ مشغل');
             
             let actionButtons = '';
-            if (isSuperAdmin()) {
-                actionButtons += `<button class="btn-action btn-edit" onclick="editUser('${uKey}')">✏️ تعديل</button>`;
+            if (window.isSuperAdmin()) {
+                actionButtons += `<button class="btn-action btn-edit" onclick="window.editUser('${uKey}')">✏️ تعديل</button>`;
                 if (uKey !== encUser) {
-                    actionButtons += `<button class="btn-action btn-delete" onclick="deleteUser('${uKey}')">حذف</button>`;
+                    actionButtons += `<button class="btn-action btn-delete" onclick="window.deleteUser('${uKey}')">حذف</button>`;
                 } else {
                     actionButtons += `<span style="color:var(--text-muted); font-size:11px;"> أساسي</span>`;
                 }
@@ -574,7 +588,7 @@
                 </tr>
             `;
         }
-    }
+    };
 
     window.addUser = async function() {
         const uname = document.getElementById('newUsername').value.trim();
@@ -589,10 +603,10 @@
             document.getElementById('newPassword').value = '';
             alert('تمت إضافة المستخدم بنجاح وحفظه سحابياً لجميع الأجهزة.');
         } else { alert('املأ البيانات'); }
-    }
+    };
 
     window.editUser = async function(oldUsername) {
-        if (!isSuperAdmin()) { alert('مقتصرة على مدير النظام الرئيسي فقط!'); return; }
+        if (!window.isSuperAdmin()) { alert('مقتصرة على مدير النظام الرئيسي فقط!'); return; }
         let userObj = window.users[oldUsername];
         if (!userObj) return;
 
@@ -606,25 +620,25 @@
         userObj.name = newName;
         userObj.pass = newPass;
         await setDoc(doc(db, "users", oldUsername), userObj);
-        addAuditLog(`تعديل حساب: ${newName}`);
+        window.addAuditLog(`تعديل حساب: ${newName}`);
         alert('تم تعديل بيانات المستخدم بنجاح! ✅');
-    }
+    };
 
     window.deleteUser = async function(uname) {
-        if (!isSuperAdmin()) { alert('مقتصرة على مدير النظام الرئيسي فقط!'); return; }
+        if (!window.isSuperAdmin()) { alert('مقتصرة على مدير النظام الرئيسي فقط!'); return; }
         if (uname === encUser) { alert('لا يمكن حذف حساب المدير الرئيسي الأساسي!'); return; }
         
         if (confirm(`هل أنت متأكد من حذف المستخدم (${uname})؟`)) {
             try {
                 await deleteDoc(doc(db, "users", uname));
-                addAuditLog(`تم حذف المستخدم: ${uname}`);
+                window.addAuditLog(`تم حذف المستخدم: ${uname}`);
                 alert('تم الحذف بنجاح من السحابة ✅');
             } catch (error) {
                 console.error("خطأ أثناء الحذف: ", error);
                 alert('حدث خطأ أثناء محاولة الحذف.');
             }
         }
-    }
+    };
 
     window.updateEmployeeDropdowns = function() {
         const selects = [document.getElementById('assignTapeTo'), document.getElementById('assignTaskTo')];
@@ -637,7 +651,7 @@
                 }
             }
         });
-    }
+    };
 
     window.renderTapeTable = function() {
         const tbody = document.getElementById('tapeTable');
@@ -645,9 +659,9 @@
         tbody.innerHTML = '';
         let count = 0;
         window.tapeBackups.forEach(tb => {
-            if (isManager() || tb.operator === window.currentUser.username) {
+            if (window.isManager() || tb.operator === window.currentUser.username) {
                 count++;
-                let mgrMode = isManager();
+                let mgrMode = window.isManager();
                 tbody.innerHTML += `
                     <tr>
                         <td><b>${tb.system}</b></td>
@@ -657,13 +671,13 @@
                         <td>${window.users[tb.assignedBy] ? window.users[tb.assignedBy].name : 'سيف (مدير رئيسي)'}</td>
                         <td>${mgrMode ? tb.deliveredTo : (tb.status.includes('منجز') ? tb.deliveredTo : `<input type="text" id="deliv_${tb.id}" class="table-input" value="${tb.deliveredTo}">`)}</td>
                         <td><span style="color:${tb.status.includes('منجز')?'var(--accent-green)':'var(--accent-orange)'}">${tb.status}</span></td>
-                        <td>${!mgrMode && !tb.status.includes('منجز') ? `<button class="btn-action btn-done" onclick="completeTape('${tb.id}')">إنجاز</button>` : 'متابعة'}</td>
+                        <td>${!mgrMode && !tb.status.includes('منجز') ? `<button class="btn-action btn-done" onclick="window.completeTape('${tb.id}')">إنجاز</button>` : 'متابعة'}</td>
                     </tr>
                 `;
             }
         });
         document.getElementById('tapeCount').innerText = count;
-    }
+    };
 
     window.renderTasks = function() {
         const tbody = document.getElementById('tasksTable');
@@ -671,10 +685,10 @@
         tbody.innerHTML = '';
         let completed = 0, visibleCount = 0;
         window.tasks.forEach(t => {
-            if (isManager() || t.assignedTo === window.currentUser.username) {
+            if (window.isManager() || t.assignedTo === window.currentUser.username) {
                 visibleCount++;
                 if (t.status === 'منجز') completed++;
-                let mgrMode = isManager();
+                let mgrMode = window.isManager();
                 tbody.innerHTML += `
                     <tr>
                         <td>${t.title}</td>
@@ -682,30 +696,30 @@
                         <td>${window.users[t.assignedBy] ? window.users[t.assignedBy].name : 'سيف (مدير رئيسي)'}</td>
                         <td><span style="color:${t.status==='منجز'?'var(--accent-green)':'var(--accent-orange)'}">${t.status}</span></td>
                         <td><small>${t.updateDate || '-'}</small></td>
-                        <td>${mgrMode ? (t.note||'-') : `<input type="text" id="note_${t.id}" class="table-input" value="${t.note||''}"><button class="btn-action btn-progress" onclick="saveNote('${t.id}')">حفظ</button>`}</td>
-                        <td>${!mgrMode ? `<button class="btn-action btn-done" onclick="updateTask('${t.id}', 'منجز')">منجز</button>` : 'متابعة'}</td>
+                        <td>${mgrMode ? (t.note||'-') : `<input type="text" id="note_${t.id}" class="table-input" value="${t.note||''}"><button class="btn-action btn-progress" onclick="window.saveNote('${t.id}')">حفظ</button>`}</td>
+                        <td>${!mgrMode ? `<button class="btn-action btn-done" onclick="window.updateTask('${t.id}', 'منجز')">منجز</button>` : 'متابعة'}</td>
                     </tr>
                 `;
             }
         });
         document.getElementById('totalTasks').innerText = visibleCount;
         document.getElementById('completedTasks').innerText = completed;
-    }
+    };
 
     window.calculateKPIs = function() {
-        let myTasks = window.tasks.filter(t => isManager() || t.assignedTo === window.currentUser.username);
+        let myTasks = window.tasks.filter(t => window.isManager() || t.assignedTo === window.currentUser.username);
         let taskPct = myTasks.length > 0 ? Math.round((myTasks.filter(t => t.status === 'منجز').length / myTasks.length) * 100) : 0;
         document.getElementById('kpiPercentage').innerText = taskPct + '%';
         document.getElementById('circleChart').style.background = `conic-gradient(var(--accent-green) ${taskPct}%, #1e293b ${taskPct}%)`;
 
-        let myTapes = window.tapeBackups.filter(tb => isManager() || tb.operator === window.currentUser.username);
+        let myTapes = window.tapeBackups.filter(tb => window.isManager() || tb.operator === window.currentUser.username);
         let tapePct = myTapes.length > 0 ? Math.round((myTapes.filter(tb => tb.status.includes('منجز')).length / myTapes.length) * 100) : 0;
         document.getElementById('tapeKpiText').innerText = tapePct + '%';
         document.getElementById('tapeProgressBar').style.width = tapePct + '%';
 
         let activeNotes = myTasks.filter(t => t.note && t.note.trim() !== '' && t.status !== 'منجز').length;
         document.getElementById('activeNotesCount').innerText = activeNotes;
-    }
+    };
 
     window.completeTape = async function(id) {
         let tb = window.tapeBackups.find(x => x.id == id);
@@ -718,7 +732,7 @@
             await setDoc(doc(db, "tapes", String(id)), tb);
             alert('تم حفظ إنجاز الشريط بنجاح سحابياً');
         } else { alert('الرجاء إدخال التاريخ والوقت'); }
-    }
+    };
 
     window.updateTask = async function(id, status) {
         let t = window.tasks.find(x => x.id == id);
@@ -727,7 +741,7 @@
             t.updateDate = new Date().toLocaleString();
             await setDoc(doc(db, "tasks", String(id)), t);
         }
-    }
+    };
 
     window.saveNote = async function(id) {
         let t = window.tasks.find(x => x.id == id);
@@ -737,10 +751,10 @@
             await setDoc(doc(db, "tasks", String(id)), t);
             alert('تم حفظ الملاحظة سحابياً');
         }
-    }
+    };
 
     window.addTapeTask = async function() {
-        if (!isManager()) return;
+        if (!window.isManager()) return;
         let sys = document.getElementById('tapeSystem').value.trim();
         let num = document.getElementById('tapeNumber').value.trim();
         let op = document.getElementById('assignTapeTo').value;
@@ -752,10 +766,10 @@
             document.getElementById('tapeNumber').value = '';
             alert('تم إسناد الشريط بنجاح وحفظه سحابياً');
         }
-    }
+    };
 
     window.addDailyTask = async function() {
-        if (!isManager()) return;
+        if (!window.isManager()) return;
         let title = document.getElementById('taskTitle').value.trim();
         let assignTo = document.getElementById('assignTaskTo').value;
         if (title) {
@@ -765,7 +779,7 @@
             document.getElementById('taskTitle').value = '';
             alert('تم إسناد المهمة بنجاح وحفظها سحابياً');
         }
-    }
+    };
 </script>
 </body>
 </html>
