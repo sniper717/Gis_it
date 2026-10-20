@@ -245,7 +245,7 @@
                 <div style="display:flex; align-items:center; gap:10px;">
                     <button id="exportMonthlyBtn" class="btn-export hidden" onclick="handleExportButton()">📥 <span id="exportBtnText">تصدير وتصفير الشهر</span></button>
                     <button class="btn-print" onclick="window.print()">🖨️ طباعة التقرير اليومي</button>
-                    <span class="status-badge">🟢 CLOUD ACTIVE</span>
+                    <span class="status-badge">🟢 CLOUD SYNCED</span>
                     <button class="btn-logout" onclick="logout()">خروج</button>
                 </div>
             </div>
@@ -372,9 +372,9 @@
                 <span>⚠️</span>
             </div>
             <div class="pro-widget">
-                <div class="pro-widget-title"><span>🛡️ الأمان وحماية المصدر</span><span style="color:var(--accent-green);">متصل بالسحاب</span></div>
+                <div class="pro-widget-title"><span>🛡️ الأمان وحماية المصدر</span><span style="color:var(--accent-green);">متصل سحابياً</span></div>
                 <div id="auditLogContainer">
-                    <div class="audit-item"><span>التزامن السحابي</span><span style="color:var(--accent-cyan);">نشط</span></div>
+                    <div class="audit-item"><span>التزامن الموحد</span><span style="color:var(--accent-cyan);">نشط</span></div>
                 </div>
             </div>
         </div>
@@ -402,33 +402,35 @@
 
     window.users = {};
     window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" };
-    window.users["saad"] = { pass: "12345", role: "emp", name: "سعد (مشغل)" };
 
     window.tasks = [];
     window.tapeBackups = [];
-    window.auditLogs = [{ text: "بدء تشغيل النظام السحابي بنجاح", time: "الآن" }];
+    window.auditLogs = [{ text: "بدء تشغيل النظام الموحد بنجاح", time: "الآن" }];
     window.currentUser = null;
 
-    // استماع مباشر للتغيرات من قاعدة البيانات السحابية
     function initFirebaseSync() {
-        // 1. المستخدمون
+        // 1. مزامنة المستخدمين لحظياً من سحابة Firebase
         onSnapshot(collection(db, "users"), (snapshot) => {
+            window.users = {};
+            window.users[encUser] = { pass: encPass, role: "admin", name: "سيف (مدير رئيسي)" }; // ضمان بقاء المدير الرئيسي دائماً
+            
             if (!snapshot.empty) {
                 snapshot.forEach(docSnap => {
                     window.users[docSnap.id] = docSnap.data();
                 });
             } else {
-                for (let uKey in window.users) {
-                    setDoc(doc(db, "users", uKey), window.users[uKey]);
-                }
+                // رفع البيانات الافتراضية لأول مرة إذا كانت القاعدة فارغة تماماً
+                setDoc(doc(db, "users", encUser), window.users[encUser]);
+                setDoc(doc(db, "users", "saad"), { pass: "12345", role: "emp", name: "سعد (مشغل)" });
             }
+
             if (window.currentUser) {
                 updateEmployeeDropdowns();
                 if (isManager()) renderUsersTable();
             }
         });
 
-        // 2. المهام اليومية
+        // 2. مزامنة المهام
         onSnapshot(collection(db, "tasks"), (snapshot) => {
             window.tasks = [];
             snapshot.forEach(docSnap => {
@@ -437,7 +439,7 @@
             if (window.currentUser) { renderTasks(); calculateKPIs(); }
         });
 
-        // 3. أشرطة النسخ الاحتياطي
+        // 3. مزامنة الأشرطة
         onSnapshot(collection(db, "tapes"), (snapshot) => {
             window.tapeBackups = [];
             snapshot.forEach(docSnap => {
@@ -446,7 +448,8 @@
             if (window.currentUser) { renderTapeTable(); calculateKPIs(); }
         });
 
-        const savedSession = sessionStorage.getItem('active_it_user');
+        // التحقق من الجلسة عبر localStorage لضمان عدم الخروج عند التحديث
+        const savedSession = localStorage.getItem('active_it_user');
         if (savedSession && window.users[savedSession]) {
             window.currentUser = window.users[savedSession];
             window.currentUser.username = savedSession;
@@ -465,7 +468,7 @@
         if (window.users[u] && window.users[u].pass === p) {
             window.currentUser = window.users[u];
             window.currentUser.username = u;
-            sessionStorage.setItem('active_it_user', u);
+            localStorage.setItem('active_it_user', u); // استخدام localStorage للحفاظ على الجلسة
             addAuditLog(`تسجيل دخول: ${window.users[u].name}`);
             showDashboard();
         } else {
@@ -473,7 +476,7 @@
         }
     }
 
-    window.logout = function() { sessionStorage.removeItem('active_it_user'); location.reload(); }
+    window.logout = function() { localStorage.removeItem('active_it_user'); location.reload(); }
     window.isManager = function() { return window.currentUser && (window.currentUser.role === 'admin' || window.currentUser.role === 'subadmin'); }
     window.isSuperAdmin = function() { return window.currentUser && window.currentUser.username === encUser; }
 
@@ -581,7 +584,7 @@
             document.getElementById('newUsername').value = '';
             document.getElementById('newName').value = '';
             document.getElementById('newPassword').value = '';
-            alert('تمت إضافة المستخدم بنجاح وحفظه سحابياً.');
+            alert('تمت إضافة المستخدم بنجاح وحفظه سحابياً لجميع الأجهزة.');
         } else { alert('املأ البيانات'); }
     }
 
